@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "compression": "^1.7.4",
+    "express": "^4.17.2",
+    "sequelize": "^6.12.2",
+    "uuid": "^8.3.2"
+  },
+  "scripts": {
+    "start": "node app.js"
+  },
+  "devDependencies": {
+    "sqlite3": "^5.0.2"
+  }
+}

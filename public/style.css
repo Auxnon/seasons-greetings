@@ -1,0 +1,49 @@
+body {
+  padding: 0;
+  margin: 0;
+}
+.canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}
+svg {
+  position: absolute;
+  pointer-events: none;
+  stroke: black;
+  stroke-width: 3px;
+  fill: none;
+}
+.square {
+  display: none;
+  width: 64px;
+  height: 64px;
+  background-color: red;
+  position: fixed;
+}
+.square2 {
+  display: none;
+  width: 64px;
+  height: 64px;
+  top: 64px;
+  background-color: rgb(111, 0, 255);
+  position: fixed;
+}
+.square3 {
+  display: none;
+  width: 64px;
+  height: 64px;
+  top: 128px;
+  background-color: rgb(0, 255, 170);
+  position: fixed;
+}
+h4 {
+  font-family: "Courier New", Courier, monospace;
+  position: fixed;
+  font-size: 36px;
+  color: #608f9b;
+  bottom: 0;
+  left: 50%;
+  text-align: center;
+  transform: translate(-50%, 0);
+}
