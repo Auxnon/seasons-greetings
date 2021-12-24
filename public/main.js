@@ -1,10 +1,17 @@
 import "./lib/three.min.js";
+import "./lib/GLTFLoader.js";
 
 (async function init() {
   let resizeDebouncer;
   let holder = document.querySelector(".canvas");
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", resize);
+  window.addEventListener("contextmenu", (ev) => {
+    ev.preventDefault();
+  });
+  document.querySelectorAll("*").forEach((c) => {
+    c.setAttribute("draggable", false);
+  });
 
   let svg = document.querySelector("svg");
   let path = document.querySelector("path");
@@ -42,10 +49,13 @@ import "./lib/three.min.js";
   camera.position.z = 4;
 
   // Create a renderer with Antialiasing
-  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  var renderer = new THREE.WebGLRenderer({ antialias: false });
 
   // Configure renderer clear color
   renderer.setClearColor("#9BE2F3");
+  //renderer.toneMapping = THREE.LinearToneMapping;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.gammaFactor = 2.2;
 
   // Configure renderer size
 
@@ -59,6 +69,7 @@ import "./lib/three.min.js";
       const manager = new THREE.LoadingManager(() => resolve(textures));
       const loader = new THREE.TextureLoader(manager);
       const textures = loader.load(tex);
+
       // const textures = [
       //   "image1.jpg",
       //   "image2.jpg",
@@ -70,6 +81,12 @@ import "./lib/three.min.js";
   const familyTex = await getTexture("good.jpg");
   const redTex = await getTexture("redpaper.jpg");
   const paperTex = await getTexture("paper.jpg");
+  const flake = await getTexture("flake.png");
+
+  redTex.encoding = THREE.sRGBEncoding;
+  familyTex.encoding = THREE.sRGBEncoding;
+  paperTex.encoding = THREE.sRGBEncoding;
+  //familyTex.color.convertSRGBToLinear();
 
   const redpaper = new THREE.MeshBasicMaterial({
     color: "#fff",
@@ -119,6 +136,46 @@ import "./lib/three.min.js";
   letter.add(photo);
   scene.add(letter);
 
+  let loader = new THREE.GLTFLoader();
+  loader.loadAsync("snow.glb").then((data) => {
+    let model = data.scene.children[0];
+    model.scale.set(5, 5, 5);
+    model.rotation.x = 0.7;
+    model.position.set(0, -1, -3);
+    model.material.emissiveMap.minFilter = THREE.LinearFilter;
+    model.material.emissiveMap.magFilter = THREE.LinearFilter;
+    scene.add(model);
+  });
+
+  loader.loadAsync("pine.glb").then((data) => {
+    let model = data.scene.children[0];
+
+    model.material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      map: model.material.emissiveMap,
+    });
+    model.material.map.minFilter = THREE.LinearFilter;
+    model.material.map.magFilter = THREE.LinearFilter;
+    //THREE.sRGBEncoding;
+    model.rotation.x = 0.7;
+    model.scale.set(2, 2, 2);
+    model.position.set(6, 2, -6.5);
+    scene.add(model);
+
+    function tr(x, y, z) {
+      let m2 = model.clone();
+      model.rotation.x = 0.7;
+      m2.position.set(x, y, z);
+      scene.add(m2);
+    }
+    tr(-4, 1.5, -6.5);
+    tr(-5, -3, -2.5);
+    tr(2, 0, -6.5);
+    tr(-7, 2, -6.5);
+    tr(-14, 3, -7.5);
+    tr(15, 3, -8.5);
+  });
+
   var bounce;
 
   // Render Loop
@@ -139,7 +196,7 @@ import "./lib/three.min.js";
         envelope.position.z += 0.03;
         envelope.rotation.x += 0.05;
 
-        if (envelope.position.y < -6) {
+        if (envelope.position.y < -4) {
           animation = "zoom";
         }
       } else if (animation == "zoom") {
@@ -151,6 +208,7 @@ import "./lib/three.min.js";
         }
       }
     } //4.1457
+    snowing();
     // Render the scene
     renderer.render(scene, camera);
   };
@@ -183,11 +241,13 @@ import "./lib/three.min.js";
     // let c = cube.clone();
     // c.position.set(ev.clientX / 100, ev.clientY / 100, 0);
     // scene.add(c);
-    if (!down) {
-      first = true;
-      down = true;
+    if (ev.pointerType == "pen") {
+      if (!down) {
+        first = true;
+        down = true;
+      }
+      point(ev);
     }
-    point(ev);
   }
   function point(ev) {
     let type = "L";
@@ -238,9 +298,13 @@ import "./lib/three.min.js";
     });
   }
 
-  let wiggleDebounce;
-
   function wiggle() {
+    if (!wiggleTimer)
+      wiggleTimer = setInterval(() => {
+        _wiggle();
+      }, 10);
+  }
+  function _wiggle() {
     let s = `M0 0`;
     time++;
     // for (let i = 0; i < vectors.length; i++) {
@@ -299,6 +363,7 @@ import "./lib/three.min.js";
     user(params["page"]);
   }
   function admin() {
+    document.querySelector("h4").remove();
     let one = document.querySelector(".square");
     let two = document.querySelector(".square2");
     let three = document.querySelector(".square3");
@@ -318,11 +383,9 @@ import "./lib/three.min.js";
     });
     three.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      if (!wiggleTimer) {
-        wiggleTimer = setInterval(() => {
-          wiggle();
-        }, 10);
-      }
+
+      wiggle();
+
       fakeDraw();
     });
 
@@ -331,9 +394,7 @@ import "./lib/three.min.js";
     holder.addEventListener("pointerup", pointup);
     window.addEventListener("keydown", (ev) => {
       if (ev.key == " ") {
-        setInterval(() => {
-          wiggle();
-        }, 10);
+        wiggle();
       } else if (ev.key == "a") {
         fakeDraw();
       }
@@ -346,21 +407,27 @@ import "./lib/three.min.js";
     let eventListener = (ev) => {
       document.querySelector("h4").style.display = "none";
       animation = "open";
-      window.removeEventListener("click", eventListener);
+      window.removeEventListener("pointerdown", eventListener);
     };
-    window.addEventListener("click", eventListener);
+    window.addEventListener("pointerdown", eventListener);
 
     if (page) {
       let ret = await postData("./load", { url: page });
       console.log(ret);
       if (ret.data) {
-        vectors = JSON.parse(ret.data);
+        let obj = JSON.parse(ret.data);
+        vectors = obj.data;
+        svg.setAttribute("viewBox", obj.size);
       }
     }
   }
 
   async function save(s) {
-    let ret = await postData("./save", vectors);
+    vectors[0].time = 0;
+    let ret = await postData("./save", {
+      data: vectors,
+      size: "0 0 " + window.innerWidth + " " + window.innerHeight,
+    });
     console.log(ret);
     if (ret && ret.user && ret.user.url) {
       window.location.replace("./?page=" + ret.user.url);
@@ -383,6 +450,34 @@ import "./lib/three.min.js";
     });
     return response.json(); // parses JSON response into native JavaScript objects
   }
-
+  let snowfall = [];
+  function snowing() {
+    if (snowfall.length)
+      snowfall.forEach((s) => {
+        s.position.y -= 0.01;
+        s.position.x += Math.sin(s.position.y * 9) / 200;
+        if (s.position.y < -1.2) {
+          s.position.y = 1.2;
+        }
+      });
+  }
+  function mkspr() {
+    const material = new THREE.SpriteMaterial({ color: 0xffffff, map: flake });
+    material.magFilter = THREE.LinearFilter;
+    material.minFilter = THREE.LinearFilter;
+    for (let i = 0; i < 20; i++) {
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(0.1, 0.1, 0.1);
+      sprite.position.set(
+        1.8 * Math.random() - 0.9,
+        2.4 * Math.random() - 1.2,
+        3
+      );
+      //sprite.material.rotation = Math.random() * 2 * Math.PI;
+      snowfall.push(sprite);
+      scene.add(sprite);
+    }
+  }
+  mkspr();
   render();
 })();
