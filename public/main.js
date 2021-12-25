@@ -1,4 +1,4 @@
-import "./lib/three.min.js";
+import "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.js";
 import "./lib/GLTFLoader.js";
 
 (async function init() {
@@ -82,6 +82,7 @@ import "./lib/GLTFLoader.js";
   const redTex = await getTexture("redpaper.jpg");
   const paperTex = await getTexture("paper.jpg");
   const flake = await getTexture("flake.png");
+  const flake2 = await getTexture("flake2.png");
 
   redTex.encoding = THREE.sRGBEncoding;
   familyTex.encoding = THREE.sRGBEncoding;
@@ -176,6 +177,56 @@ import "./lib/GLTFLoader.js";
     tr(15, 3, -8.5);
   });
 
+  let snowmen = [];
+  loader.loadAsync("snowman.glb").then((data) => {
+    let model = new THREE.Group();
+    let model1 = data.scene.children[0];
+    model1.geometry.computeFaceNormals();
+    let model2 = data.scene.children[1];
+
+    model2.renderOrder = 999;
+
+    model1.material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      map: model1.material.emissiveMap,
+      transparent: true,
+      depthWrite: true,
+      depthTest: true,
+    });
+
+    model2.material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      map: model2.material.emissiveMap,
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+    });
+
+    model2.material.side = THREE.DoubleSide;
+    model.add(model1);
+    model.add(model2);
+
+    ///renderOrder;
+    //model.material.map.depthBuffer = false;
+    //model.rotation.x = Math.PI;
+    model.visible = false;
+    model.position.set(2, -1, 2);
+    model.rotation.x = 0.4;
+    snowmen.push(model);
+    scene.add(model);
+
+    function _snm(x) {
+      let m2 = model.clone();
+      m2.position.x = x;
+      snowmen.push(m2);
+      scene.add(m2);
+    }
+
+    _snm(0);
+    _snm(4);
+    _snm(-2);
+  });
+
   var bounce;
 
   // Render Loop
@@ -209,6 +260,14 @@ import "./lib/GLTFLoader.js";
       }
     } //4.1457
     snowing();
+    if (snowmen.length > 0) {
+      snowmen.forEach((s) => {
+        s.rotation.y += 0.1;
+        s.rotation.z = Math.cos(s.rotation.y / 2) / 2;
+        s.position.x -= 0.02;
+        if (s.position.x < -4) s.position.x = 4;
+      });
+    }
     // Render the scene
     renderer.render(scene, camera);
   };
@@ -352,6 +411,11 @@ import "./lib/GLTFLoader.js";
       setTimeout(() => {
         _fakeLoop();
       }, next.time);
+    } else {
+      if (vectors.length)
+        snowmen.forEach((s) => {
+          s.visible = true;
+        });
     }
   }
 
@@ -360,7 +424,7 @@ import "./lib/GLTFLoader.js";
   if (params["admin"] && params["admin"] == "ye") {
     admin();
   } else {
-    user(params["page"]);
+    user(params["card"]);
   }
   function admin() {
     document.querySelector("h4").remove();
@@ -378,6 +442,10 @@ import "./lib/GLTFLoader.js";
     two.addEventListener("click", (ev) => {
       ev.stopPropagation();
       vectors = [];
+      // if (snowmen.length) {
+      //   snowmen.forEach((s) => s.remove());
+      //   snowmen = [];
+      // }
       if (wiggleTimer) clearInterval(wiggleTimer);
       draw();
     });
@@ -412,7 +480,7 @@ import "./lib/GLTFLoader.js";
     window.addEventListener("pointerdown", eventListener);
 
     if (page) {
-      let ret = await postData("./load", { url: page });
+      let ret = await postData("./cardload", { url: page });
       console.log(ret);
       if (ret.data) {
         let obj = JSON.parse(ret.data);
@@ -423,14 +491,14 @@ import "./lib/GLTFLoader.js";
   }
 
   async function save(s) {
-    vectors[0].time = 0;
-    let ret = await postData("./save", {
+    if (vectors.length) vectors[0].time = 0;
+    let ret = await postData("./cardsave", {
       data: vectors,
       size: "0 0 " + window.innerWidth + " " + window.innerHeight,
     });
     console.log(ret);
     if (ret && ret.user && ret.user.url) {
-      window.location.replace("./?page=" + ret.user.url);
+      window.location.replace("./?card=" + ret.user.url);
     }
   }
   async function postData(url = "", data = {}) {
@@ -463,10 +531,16 @@ import "./lib/GLTFLoader.js";
   }
   function mkspr() {
     const material = new THREE.SpriteMaterial({ color: 0xffffff, map: flake });
+    const material2 = new THREE.SpriteMaterial({
+      color: 0xffffff,
+      map: flake2,
+    });
     material.magFilter = THREE.LinearFilter;
     material.minFilter = THREE.LinearFilter;
+    material2.magFilter = THREE.LinearFilter;
+    material2.minFilter = THREE.LinearFilter;
     for (let i = 0; i < 20; i++) {
-      const sprite = new THREE.Sprite(material);
+      const sprite = new THREE.Sprite(i % 2 == 0 ? material : material2);
       sprite.scale.set(0.1, 0.1, 0.1);
       sprite.position.set(
         1.8 * Math.random() - 0.9,
